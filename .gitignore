@@ -2,4 +2,7 @@
 .venv
 calibrated/*.mat
 calibrated/*.npy
+images/*.png
+images/*.jpg
+images/*.jpeg
 *__pycache__

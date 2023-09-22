@@ -18,6 +18,7 @@ import spectral.io.envi as envi
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from PIL import Image
 
 print("Spectral version:", sp.__version__)
 
@@ -123,10 +124,19 @@ class DataReader:
         plt.ylabel('Reflectance')
         plt.show()
 
-    # Show the heatmap of the image at a specific bandwidth (the selected band will be the closest one
+    # Displays the heatmap of the image at a specific bandwidth (the selected band will be the closest one
     # among the band buckets included in the source hdr file).
-    def show_heatmap(self, target_band):
+    def create_heatmap(self, target_band, save_image=False):
         selected_band = self.calibrated_np[:, :, self.get_band_index(target_band)]
+
+        if save_image:
+            img_name = "images/" + self.hdr_path.split('/')[-1][:-4] + ".png"
+            normalized = selected_band / np.max(selected_band)
+            colormap = plt.cm.jet
+            colored_data = (colormap(normalized) * 255).astype(np.uint8)
+            img = Image.fromarray(colored_data)
+            img.save(img_name)
+
         fig, ax = plt.subplots(figsize=(4, 4))  # Adjust the figsize as needed
         plt.imshow(selected_band, cmap='jet')  # Use an appropriate colormap
         plt.colorbar(label='Reflectance')  # Add a colorbar with a label
@@ -157,4 +167,4 @@ if __name__=="__main__":
     # dr.print_bands()
     # dr.show_calibrated()
     # dr.show_pixel_response(600, 100)
-    dr.show_heatmap(1650)
+    dr.create_heatmap(1650, save_image=True)
