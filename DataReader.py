@@ -130,12 +130,13 @@ class DataReader:
         selected_band = self.calibrated_np[:, :, self.get_band_index(target_band)]
 
         if save_image:
-            img_name = "images/" + self.hdr_path.split('/')[-1][:-4] + ".png"
+            img_name = "images/" + self.hdr_path.split('/')[-1][:-4] + ".jpg"
             normalized = selected_band / np.max(selected_band)
             colormap = plt.cm.jet
             colored_data = (colormap(normalized) * 255).astype(np.uint8)
             img = Image.fromarray(colored_data)
-            img.save(img_name)
+            rgb_im = img.convert('RGB') # remove alpha channel for JPG
+            rgb_im.save(img_name)
 
         fig, ax = plt.subplots(figsize=(4, 4))  # Adjust the figsize as needed
         plt.imshow(selected_band, cmap='jet')  # Use an appropriate colormap
