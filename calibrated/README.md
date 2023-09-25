@@ -1,0 +1,1 @@
+**Nota**: Localmente, questa cartella contiene dataset in formato numpy o .mat generati da DataReader.

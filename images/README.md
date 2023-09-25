@@ -1,0 +1,1 @@
+**Nota**: Localmente, questa cartella contiene immagini generated da DataReader (es. una heatmap in formato .jpg)
