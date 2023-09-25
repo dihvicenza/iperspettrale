@@ -25,8 +25,8 @@ print("Spectral version:", sp.__version__)
 # ------------------------------------------------------------------------------------------------------
 # DATAREADER
 # ------------------------------------------------------------------------------------------------------
-# The DataReader class is an object that loads a hyperspectral dataset, performs calibration, and allows
-# the user to visualize the results for further analysis. 
+# When created, the DataReader instance loads a hyperspectral dataset and performs calibration.
+# The user can then visualize the results for further analysis. 
 # 
 # INPUTS
 #   - dataset_path: path to a directory containing all relevant datasets (default current directory)
@@ -55,7 +55,7 @@ class DataReader:
         self.bands = sp.envi.read_envi_header(self.hdr_path)['Wavelength']
 
         target = self.hdr_path.split('/')[-1][:-4] + '_calibrated.npy'
-        if target in os.listdir("./calibrated"):
+        if target in os.listdir("./calibrated"): # if calibration files already exist, simply load them from the "calibrated" folder; otherwise, generate them
             self.calibrated_np = np.load("./calibrated/" + target)
         else:
             self.calibrate()
@@ -105,7 +105,7 @@ class DataReader:
         np.save("./calibrated/" + self.hdr_path.split('/')[-1][:-4] + '_calibrated',self.calibrated_np)
 
         print("Saved calibrated image to ./calibrated/")
-
+    
     # Show the full calibrated dataset as a hyperspectral cube.
     def show_calibrated(self):
         app = wx.App(False)  # Create a wx.App object
@@ -113,21 +113,15 @@ class DataReader:
         view_cube(img)
         app.MainLoop()
 
-    # Show the reflectance across all bands for a given pixel.
-    def show_pixel_response(self, leaf_pixel_x, leaf_pixel_y):
-        leaf_pixel = self.calibrated_np[leaf_pixel_y:leaf_pixel_y+1, leaf_pixel_x:leaf_pixel_x+1,:]
-        leaf_pixel_squeezed = np.squeeze(leaf_pixel)
-        plt.plot(self.bands, leaf_pixel_squeezed)
-        plt.title('Leaf Spectral Footprint\n(Pixel {},{})'.format(
-            leaf_pixel_x, leaf_pixel_y))
-        plt.xlabel('Wavelength')
-        plt.ylabel('Reflectance')
-        plt.show()
-
-    # Displays the heatmap of the image at a specific bandwidth (the selected band will be the closest one
-    # among the band buckets included in the source hdr file).
-    def create_heatmap(self, target_band, save_image=False):
+    # Get the heatmap of the image at a specific bandwidth.
+    # The selected band will be the closest one among the band buckets included in the source hdr file.
+    def get_heatmap(self, target_band):
         selected_band = self.calibrated_np[:, :, self.get_band_index(target_band)]
+        return selected_band
+
+    # Display the heatmap of the image at a specific bandwidth.
+    def show_heatmap(self, target_band, save_image=False):
+        selected_band = self.get_heatmap(target_band)
 
         if save_image:
             img_name = "images/" + self.hdr_path.split('/')[-1][:-4] + ".jpg"
@@ -153,6 +147,51 @@ class DataReader:
         while float(self.bands[i]) < target_band:
             i += 1
         return i   
+    
+    # Show the reflectance across all bands for a given pixel.
+    # OUTPUT: 
+    #   1D list of band values.
+    #   1D np array of reflectance values.
+    def show_pixel_response(self, x, y):
+        pixel_reflectance = self.calibrated_np[y:y+1, x:x+1,:]
+        pixel_squeezed = np.squeeze(pixel_reflectance)
+        plt.plot(self.bands, pixel_squeezed)
+        plt.title('Spectral Footprint\n(Pixel {},{})'.format(x, y))
+        plt.xlabel('Wavelength')
+        plt.ylabel('Reflectance')
+        plt.show()
+        return self.bands, pixel_squeezed
+
+    # Get the reflectance averaged over a given pixel region.
+    # INPUT: 
+    #   x, y - top left corner of region of interest.
+    #   w, h - width and height of region of interest, with corner at (x, y).
+    # OUTPUT: 
+    #   1D list of band values.
+    #   1D np array of reflectance values.
+    def get_region_response(self, x, y, w, h):
+        region_reflectance = self.calibrated_np[y:y+h, x:x+w,:]
+        reflectance = []
+        for band_index in range(region_reflectance.shape[2]):
+            reflectance.append(np.mean(region_reflectance[:,:,band_index]))
+        return self.bands, reflectance
+
+    # Display the reflectance averaged over a given pixel region.
+    # INPUT: 
+    #   x, y - top left corner of region of interest.
+    #   w, h - width and height of region of interest, with corner at (x, y).
+    #   wavelengths - array of bands to mark
+    # OUTPUT: 
+    #   1D list of band values.
+    #   1D np array of reflectance values.
+    def show_region_response(self, x, y, w, h, wavelengths=[]):
+        _, reflectance = self.get_region_response(x, y, w, h)
+        plt.plot(self.bands, reflectance)
+        plt.title('Spectral Footprint\n(Region {},{})'.format(x, y))
+        plt.xlabel('Wavelength')
+        plt.ylabel('Reflectance')
+        plt.vlines(x=[self.get_band_index(w) for w in wavelengths], ymin=min(reflectance), ymax=max(reflectance), colors='red', ls='--', lw=2)
+        plt.show()
 
 # ------------------------------------------------------------------------------------------------------
 # MAIN
@@ -168,4 +207,5 @@ if __name__=="__main__":
     # dr.print_bands()
     # dr.show_calibrated()
     # dr.show_pixel_response(600, 100)
-    dr.create_heatmap(1650, save_image=True)
+    dr.show_region_response(600, 100, 5, 5, [1650])
+    # dr.show_heatmap(1650, save_image=True)
